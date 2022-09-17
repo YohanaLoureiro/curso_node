@@ -4,23 +4,33 @@
     2 Obter o enderenço do usuario pelo Id
 */
 
-function obterUsuario(callback) {
-  setTimeout(function () {
-    return callback(null, {
-      id: 1,
-      nome: "Nana",
-      dataNascimento: new Date(),
-    });
-  }, 1000);
+//importamos um módulo interno do node .js
+const util = require("util");
+const obterEnderecoAsync = util.promisify(obterEndereco);
+function obterUsuario() {
+  //quando der algum problema -> reject(ERRO)
+  //quando sucess -> RESOLV
+  return new Promise(function resolvePromisse(resolve, reject) {
+    setTimeout(function () {
+      //   return reject(new Error("DEU RUIM DE VERDADE!"));
+      return resolve({
+        id: 1,
+        nome: "Nana",
+        dataNascimento: new Date(),
+      });
+    }, 1000);
+  });
 }
 
-function obterTelefone(idUsuario, callback) {
-  setTimeout(() => {
-    return callback(null, {
-      telefone: "981936996",
-      ddd: 19,
-    });
-  }, 2000);
+function obterTelefone(idUsuario) {
+  return new Promise(function resolverPromisse(resolve, reject) {
+    setTimeout(() => {
+      return resolve({
+        telefone: "981936996",
+        ddd: 19,
+      });
+    }, 2000);
+  });
 }
 
 function obterEndereco(idUsuario, callback) {
@@ -32,33 +42,40 @@ function obterEndereco(idUsuario, callback) {
   }, 2000);
 }
 
-function resolverUsuario(erro, usuario) {
-  console.log("usuario", usuario);
-}
+const usuarioPromisse = obterUsuario();
+//Para manipular o sucesso usamos a função .then
+//Para manipular o erros usamos a .catch
 
-obterUsuario(function resolverUsuario(error, usuario) {
-  //null || "" || 0 == false
-  if (error) {
-    console.error("Erro com USUARIO", error);
-    return;
-  } else {
-    obterTelefone(usuario.id, function resolverTelefone(error1, telefone) {
-      if (error1) {
-        console.error("Erro com TELEFONE", error1);
-        return;
-      } else {
-        obterEndereco(usuario.id, function resolverEndereco(error2, enderenco) {
-          if (error2) {
-            console.error("Erro com ENDEREÇO", error2);
-            return;
-          }
-          console.log(`
-                Nome: ${usuario.nome},
-                Endereço: ${enderenco.rua}, ${enderenco.numero},
-                Telefone: (${telefone.ddd}) ${telefone.telefone},
-                `);
-        });
-      }
+//usuario -> telefone -> telefone
+usuarioPromisse
+  .then(function (usuario) {
+    return obterTelefone(usuario.id).then(function resolverTelefone(result) {
+      return {
+        usuario: {
+          nome: usuario.nome,
+          id: usuario.id,
+        },
+        telefone: result,
+      };
     });
-  }
-});
+  })
+  .then(function (resultado) {
+    const endereco = obterEnderecoAsync(resultado.usuario.id);
+    return endereco.then(function resolverEndereco(result) {
+      return {
+        usuario: resultado.usuario,
+        telefone: resultado.telefone,
+        endereco: result,
+      };
+    });
+  })
+  .then(function (resultado) {
+    console.log(`
+    Nome: ${resultado.usuario.nome}
+    Endereço: ${resultado.endereco.rua}, ${resultado.endereco.numero}
+    Telefone: (${resultado.telefone.ddd}) ${resultado.telefone.telefone}
+    `);
+  })
+  .catch(function (error) {
+    console.error("DEU RUIM", error);
+  });
